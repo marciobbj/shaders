@@ -120,10 +120,7 @@ for p in planets:
             frame = scene.frame_current
             if frame < 1 or frame > 500:
                 return
-            # Apagar apenas se frame=1, senão manter acumulado
-            if frame == 1:
-                spline.points.clear()
-                spline.points.add(0)
+            
             planet_world = planet_obj.matrix_world.translation
             spline = trail_obj.data.splines[0]
             # Definir ponto atual
