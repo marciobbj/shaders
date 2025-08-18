@@ -33,7 +33,3 @@ Este projeto não tem pretensões comerciais - é apenas um hobby para compartil
 ## 📄 Licença
 
 Este projeto está licenciado sob a [MIT License](LICENSE) - veja o arquivo LICENSE para detalhes.
-
----
-
-**Divirta-se explorando e criando shaders legais!** ✨
