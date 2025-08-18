@@ -2,15 +2,6 @@
 
 Este é um projeto casual que serve como um acervo de shaders interessantes e experimentais. O objetivo é reunir e compartilhar shaders legais que possam inspirar outros desenvolvedores e entusiastas de gráficos computacionais.
 
-## 📁 Estrutura do Projeto
-
-```
-shaders/
-├── space:time/
-│   └── blackhole.html    # Shader de buraco negro
-└── README.md
-```
-
 ## 🚀 Como Usar
 
 Cada shader está organizado em sua própria pasta e pode ser executado diretamente no navegador. Basta abrir o arquivo HTML correspondente para ver o shader em ação.
