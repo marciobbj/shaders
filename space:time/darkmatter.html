@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulação: Matéria Escura vs Matéria Comum</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 350px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: #bb86fc;
+        }
+
+        p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .dm-dot {
+            background-color: #6200ea;
+            box-shadow: 0 0 5px #6200ea;
+        }
+
+        .bm-dot {
+            background-color: #ffd700;
+            box-shadow: 0 0 5px #ffd700;
+        }
+
+        .instruction {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 15px;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-layer">
+        <h1>A Teia Cósmica</h1>
+        <p>Esta simulação demonstra como a gravidade da <strong>Matéria Escura</strong> atrai a <strong>Matéria
+                Comum</strong>.</p>
+        <p>A matéria comum (gás) "cai" nos poços gravitacionais, formando aglomerados e galáxias.</p>
+
+        <div class="legend">
+            <div class="dot dm-dot"></div> Matéria Escura (Gravidade)
+        </div>
+        <div class="legend">
+            <div class="dot bm-dot"></div> Matéria Comum (Gás/Estrelas)
+        </div>
+
+        <p class="instruction">Clique e arraste para girar a câmera.<br>Role para dar zoom.</p>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // Configuração Básica
+        const scene = new THREE.Scene();
+        // Adicionando uma névoa suave para profundidade
+        scene.fog = new THREE.FogExp2(0x050510, 0.0015);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 120;
+        camera.position.y = 30;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Gerar Texturas Programaticamente (para não depender de imagens externas) ---
+        function createGlowTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, color);
+            gradient.addColorStop(0.5, 'rgba(0,0,0,0.1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        // --- 1. CRIAR MATÉRIA ESCURA (Atratores Gravitacionais) ---
+        const darkMatterNodes = [];
+        const numDMNodes = 6;
+
+        // Geometria para visualizar a Matéria Escura (Wireframe Roxo)
+        const dmGeometry = new THREE.IcosahedronGeometry(8, 1);
+        const dmMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6200ea,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.3
+        });
+
+        for (let i = 0; i < numDMNodes; i++) {
+            const mesh = new THREE.Mesh(dmGeometry, dmMaterial);
+
+            // Espalhar os nós de matéria escura aleatoriamente
+            mesh.position.set(
+                (Math.random() - 0.5) * 150,
+                (Math.random() - 0.5) * 100,
+                (Math.random() - 0.5) * 100
+            );
+
+            // Escala aleatória para variar a massa visual
+            const scale = 0.5 + Math.random() * 1.5;
+            mesh.scale.set(scale, scale, scale);
+
+            // Massa fictícia baseada no tamanho
+            mesh.userData = { mass: scale * 200 };
+
+            scene.add(mesh);
+            darkMatterNodes.push(mesh);
+        }
+
+        // Conexões visuais entre nós de matéria escura (Teia)
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x330066, transparent: true, opacity: 0.1 });
+        const lineGeometry = new THREE.BufferGeometry();
+        const linePositions = [];
+
+        // Criar linhas entre nós próximos para simular a "Teia Cósmica"
+        for (let i = 0; i < darkMatterNodes.length; i++) {
+            for (let j = i + 1; j < darkMatterNodes.length; j++) {
+                const dist = darkMatterNodes[i].position.distanceTo(darkMatterNodes[j].position);
+                if (dist < 120) {
+                    linePositions.push(
+                        darkMatterNodes[i].position.x, darkMatterNodes[i].position.y, darkMatterNodes[i].position.z,
+                        darkMatterNodes[j].position.x, darkMatterNodes[j].position.y, darkMatterNodes[j].position.z
+                    );
+                }
+            }
+        }
+        lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+        const connections = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(connections);
+
+
+        // --- 2. CRIAR MATÉRIA COMUM (Partículas) ---
+        const particleCount = 3000;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = []; // Armazenar velocidade XYZ para cada partícula
+
+        for (let i = 0; i < particleCount; i++) {
+            // Posição inicial espalhada
+            positions[i * 3] = (Math.random() - 0.5) * 250;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 250;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 250;
+
+            // Velocidade inicial baixa (deriva cósmica)
+            velocities.push({
+                x: (Math.random() - 0.5) * 0.2,
+                y: (Math.random() - 0.5) * 0.2,
+                z: (Math.random() - 0.5) * 0.2
+            });
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            color: 0xffd700,
+            size: 1.5,
+            map: createGlowTexture('rgba(255, 215, 0, 1)'),
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particlesSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesSystem);
+
+        // --- Interatividade (Mouse) ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngleX = 0;
+        let cameraAngleY = 0;
+
+        document.addEventListener('mousedown', () => isDragging = true);
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaMove = {
+                    x: e.offsetX - previousMousePosition.x,
+                    y: e.offsetY - previousMousePosition.y
+                };
+
+                // Rotação simples em órbita
+                const rotSpeed = 0.005;
+                const x = camera.position.x;
+                const z = camera.position.z;
+
+                // Girar no eixo Y (horizontal)
+                camera.position.x = x * Math.cos(-deltaMove.x * rotSpeed) - z * Math.sin(-deltaMove.x * rotSpeed);
+                camera.position.z = x * Math.sin(-deltaMove.x * rotSpeed) + z * Math.cos(-deltaMove.x * rotSpeed);
+
+                camera.lookAt(0, 0, 0);
+            }
+            previousMousePosition = { x: e.offsetX, y: e.offsetY };
+        });
+
+        // Scroll Zoom
+        document.addEventListener('wheel', (event) => {
+            camera.position.z += event.deltaY * 0.05;
+            // Limites de zoom
+            if (camera.position.z < 20) camera.position.z = 20;
+            if (camera.position.z > 300) camera.position.z = 300;
+        });
+
+
+        // --- Loop de Simulação (Física) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Atualizar partículas
+            const positions = particlesSystem.geometry.attributes.position.array;
+
+            // Constante gravitacional fictícia para a simulação
+            const G = 0.05;
+            const damping = 0.995; // Atrito espacial leve para estabilizar órbitas
+
+            for (let i = 0; i < particleCount; i++) {
+                const px = positions[i * 3];
+                const py = positions[i * 3 + 1];
+                const pz = positions[i * 3 + 2];
+
+                let forceX = 0, forceY = 0, forceZ = 0;
+
+                // Calcular atração para CADA nó de matéria escura
+                darkMatterNodes.forEach(node => {
+                    const dx = node.position.x - px;
+                    const dy = node.position.y - py;
+                    const dz = node.position.z - pz;
+
+                    const distSq = dx * dx + dy * dy + dz * dz;
+                    const dist = Math.sqrt(distSq);
+
+                    // Evitar divisão por zero ou forças infinitas muito perto do centro (softening)
+                    if (dist > 5) {
+                        const f = (G * node.userData.mass) / distSq;
+                        forceX += f * (dx / dist);
+                        forceY += f * (dy / dist);
+                        forceZ += f * (dz / dist);
+                    }
+                });
+
+                // Atualizar velocidade
+                velocities[i].x += forceX;
+                velocities[i].y += forceY;
+                velocities[i].z += forceZ;
+
+                // Aplicar 'damping' (atrito)
+                velocities[i].x *= damping;
+                velocities[i].y *= damping;
+                velocities[i].z *= damping;
+
+                // Atualizar posição
+                positions[i * 3] += velocities[i].x;
+                positions[i * 3 + 1] += velocities[i].y;
+                positions[i * 3 + 2] += velocities[i].z;
+            }
+
+            particlesSystem.geometry.attributes.position.needsUpdate = true;
+
+            // Rotação lenta da Matéria Escura para dar vida à cena
+            darkMatterNodes.forEach(node => {
+                node.rotation.x += 0.002;
+                node.rotation.y += 0.002;
+            });
+            connections.rotation.y += 0.0005;
+
+            renderer.render(scene, camera);
+        }
+
+        // Iniciar
+        animate();
+
+        // Redimensionamento da janela
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>
